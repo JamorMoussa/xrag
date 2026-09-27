@@ -1,0 +1,7 @@
+import unittest
+from xrag.configs import Configs
+
+
+def test_loading_configs():
+    configs = Configs()
+    assert configs.app_name == "xrag"
