@@ -22,6 +22,11 @@ class Configs(BaseSettings):
     #---- Lite Parser
     LITE_PARSER_BASE_URL: str
 
+    #---- Temporal
+    TEMPORAL_HOST: str
+    TEMPORAL_NAMESPACE: str
+    TEMPORAL_TASK_QUEUE: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8"
