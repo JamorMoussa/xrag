@@ -1,6 +1,14 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from xrag.configs import Configs
+
+@dataclass
+class File:
+    content: bytes
+    filename: str
+    content_type: str
+    
 
 class StorageService(ABC):
 
@@ -12,9 +20,13 @@ class StorageService(ABC):
         self.configs = configs
 
     @abstractmethod
-    async def upload_file():
+    async def upload():
         ...
 
     @abstractmethod
-    async def delete_file():
+    async def delete():
+        ...
+
+    @abstractmethod
+    async def download():
         ...

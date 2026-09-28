@@ -1,8 +1,10 @@
 from botocore.config import Config as BotoConfig
+from pathlib import PurePosixPath
 from io import BytesIO
 import boto3
+import asyncio
 
-from .base import StorageService
+from .base import StorageService, File
 from xrag.configs import Configs
 
 
@@ -27,7 +29,7 @@ class S3StorageService(StorageService):
             )
         )
 
-    async def upload_file(
+    async def upload(
         self,
         object_key,
         fileobj: BytesIO,
@@ -45,11 +47,33 @@ class S3StorageService(StorageService):
             ExtraArgs=extra_args or None,
         )
 
-    async def delete_file(
+    async def delete(
         self, 
         object_key
     ):
         self.client.delete_object(
             Bucket=self.bucket,
             Key=object_key,
+        )
+
+    async def download(
+        self, object_key: str
+    ) -> File:
+
+        response = await asyncio.to_thread(
+            self.client.get_object,
+            Bucket=self.bucket,
+            Key=object_key,
+        )
+
+        body = response["Body"]
+        try:
+            content = await asyncio.to_thread(body.read)
+        finally:
+            body.close()
+
+        return File(
+            content=content,
+            filename=PurePosixPath(object_key).name,
+            content_type=response.get("ContentType"),
         )

@@ -22,7 +22,7 @@ def test_s3_upload_download_delete():
     payload = b"XRAG S3 storage smoke test\n"
     try:
         asyncio.run(
-            storage.upload_file(
+            storage.upload(
                 object_key=key,
                 fileobj=BytesIO(payload),
                 content_type="text/plain",

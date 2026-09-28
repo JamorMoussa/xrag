@@ -21,5 +21,11 @@ services:
     volumes:
       - rustfs_data:/data
 
+  liteparse:
+    image: ghcr.io/run-llama/liteparse-server:main
+    container_name: liteparse
+    ports:
+      - "5707:5707"
+
 volumes:
   rustfs_data:

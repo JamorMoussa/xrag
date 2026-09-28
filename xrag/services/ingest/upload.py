@@ -27,11 +27,13 @@ class UploadService:
             project_id=project_id, file=file
         )
 
-        await self.sts.upload_file(
+        await self.sts.upload(
             object_key= object_key,
             fileobj=file.file,
             content_type=file.content_type
         )
+
+        return object_key
 
 
     def is_valid_file(

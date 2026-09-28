@@ -19,6 +19,9 @@ class Configs(BaseSettings):
     FILE_ALLOWED_TYPES: list[str]
     FILE_MAX_SIZE: int
 
+    #---- Lite Parser
+    LITE_PARSER_BASE_URL: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8"
