@@ -3,14 +3,17 @@ from pathlib import Path
 from typing import Annotated
 from pydantic import BaseModel
 from llama_index.core import Document
+from temporalio.client import Client
+import uuid
 
 from xrag.configs import API_PREFIX_PATH
 from ..deps import (
-    get_storage_service, get_liteparser_service
+    get_storage_service, get_liteparser_service, get_temporal_client, get_configs
 )
 from xrag.services.ingest.upload import UploadService
 from xrag.services.storage import StorageService, File
 from xrag.services.ingest.parse import LiteParserService
+from xrag.configs import Configs
 
 class ParseRequest(BaseModel):
     object_key: str
@@ -43,22 +46,27 @@ async def upload(
 
 @ingest_router.post("/parse")
 async def parse(
-    request: ParseRequest,
-    storage_service: Annotated[StorageService, Depends(get_storage_service)],
-    parser: Annotated[LiteParserService, Depends(get_liteparser_service)]
+    request: ParseRequest, 
+    client: Annotated[Client, Depends(get_temporal_client)],
+    configs: Annotated[Configs, Depends(get_configs)],
 ):
 
-    file: File = await (
-        storage_service.download(
-            object_key=request.object_key
-        )
+    workflow_id = f"ingestion-{uuid.uuid4()}"
+
+    results = await client.start_workflow(
+        "IngestionWorkflow",
+        args=[
+            {
+                "object_key": request.object_key,
+            }
+        ],
+        id=workflow_id,
+        task_queue=configs.TEMPORAL_TASK_QUEUE,
+        result_type=dict,
     )
 
-    content: list[Document] = await parser.parse(
-        content=file.content, 
-        filename=file.filename, 
-        content_type=file.content_type
-    )
+    return {
+        "workflow_id": workflow_id
+    }
 
-    return content
-
+    

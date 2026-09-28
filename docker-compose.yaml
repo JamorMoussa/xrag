@@ -1,31 +1,99 @@
 services:
-  rustfs:
-    image: rustfs/rustfs:latest
-    container_name: rustfs
+  temporal:
+    image: temporalio/temporal:latest
+    command:
+      - server
+      - start-dev
+      - --ip
+      - "0.0.0.0"
+      - --db-filename
+      - /data/temporal.db
+    ports:
+      - "7233:7233" # Temporal gRPC
+      - "8233:8233" # Temporal UI
+    volumes:
+      - temporal_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - temporal
+        - operator
+        - cluster
+        - health
+        - --address
+        - "127.0.0.1:7233"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     restart: unless-stopped
 
+  api:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    env_file:
+      - .env
+    environment:
+      S3_ENDPOINT_URL: http://rustfs:9000
+      LITE_PARSER_BASE_URL: http://liteparse:5707
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_TASK_QUEUE: document-processing
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web console
+      - "8000:8000"
+    depends_on:
+      temporal:
+        condition: service_healthy
+      rustfs:
+        condition: service_started
+      liteparse:
+        condition: service_started
 
+  worker:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["python", "-m", "xrag.tasks.worker"]
+    env_file:
+      - .env
+    environment:
+      S3_ENDPOINT_URL: http://rustfs:9000
+      LITE_PARSER_BASE_URL: http://liteparse:5707
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_TASK_QUEUE: document-processing
+    stop_grace_period: 60s
+    depends_on:
+      temporal:
+        condition: service_healthy
+      rustfs:
+        condition: service_started
+      liteparse:
+        condition: service_started
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     environment:
       RUSTFS_ADDRESS: "0.0.0.0:9000"
       RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
       RUSTFS_CONSOLE_ENABLE: "true"
-
-      RUSTFS_ACCESS_KEY: "rustfsadmin"
-      RUSTFS_SECRET_KEY: "rustfsadmin123"
-
-      RUSTFS_VOLUMES: "/data"
-
+      RUSTFS_ACCESS_KEY: "${S3_ACCESS_KEY:?Set S3_ACCESS_KEY in .env}"
+      RUSTFS_SECRET_KEY: "${S3_SECRET_KEY:?Set S3_SECRET_KEY in .env}"
+      RUSTFS_VOLUMES: /data
     volumes:
       - rustfs_data:/data
 
   liteparse:
     image: ghcr.io/run-llama/liteparse-server:main
-    container_name: liteparse
     ports:
       - "5707:5707"
+    restart: unless-stopped
 
 volumes:
+  temporal_data:
   rustfs_data:
