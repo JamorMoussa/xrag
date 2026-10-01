@@ -5,18 +5,20 @@ from typing import BinaryIO
 from enum import Enum
 from uuid import uuid4
 
-from src.configs import Configs
+from xrag.configs import Configs
 
 @dataclass
-class StorageFile:
+class File:
     content: BinaryIO | Iterator[bytes]
     filename: str
     content_type: str
+
 
 class StorageType(Enum):
     RAW = "raw"
     PARSED = "parsed"
     CHUNKED = "chunks"
+
 
 @dataclass
 class StorageKey:
@@ -25,6 +27,23 @@ class StorageKey:
     storage_type: StorageType
     content_type: str 
     ext: str
+
+    def get_key(
+        self, 
+    ):
+
+        name = None 
+
+        if self.storage_type is StorageType.RAW:
+            name = self.document_id
+        else:
+            name = self.storage_type.value
+
+        return "/".join([
+            self.workspace_id,
+            self.document_id,
+            f"{name}.{self.ext}"
+        ])
     
 
 class StorageService(ABC):
@@ -36,28 +55,10 @@ class StorageService(ABC):
         super().__init__()
         self.configs = configs
 
-    def _generate_key(
-        self, 
-        storage_key: StorageKey
-    ):
-
-        name = None 
-
-        if storage_key.storage_type is StorageType.RAW:
-            name = storage_key.document_id
-        else:
-            name = storage_key.storage_type.value
-
-        return "/".join([
-            storage_key.workspace_id,
-            storage_key.document_id,
-            f"{name}.{storage_key.ext}"
-        ])
-
     @abstractmethod
     def upload(
         self,
-        storage_file: StorageFile, 
+        file: File, 
         storage_key: StorageKey
     ):
         ...
@@ -69,5 +70,5 @@ class StorageService(ABC):
     @abstractmethod
     def download(
         object_key: str 
-    ) -> StorageFile:
+    ) -> File:
         ...
