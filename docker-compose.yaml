@@ -4,7 +4,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: xrag/api/Dockerfile
+      dockerfile: docker/Dockerfile.api
     env_file:
       - .env
     ports:
