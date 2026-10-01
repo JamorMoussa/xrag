@@ -7,8 +7,8 @@ from uuid import uuid4
 
 import pytest
 
-from xrag.configs import get_configs
-from xrag.services.storage.s3 import S3StorageService
+from xrag_old.configs import get_configs
+from xrag_old.services.storage.s3 import S3StorageService
 
 
 @pytest.mark.skipif(

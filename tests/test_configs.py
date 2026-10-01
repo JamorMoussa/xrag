@@ -1,5 +1,5 @@
 import unittest
-from xrag.configs import Configs
+from xrag_old.configs import Configs
 
 
 def test_loading_configs():
