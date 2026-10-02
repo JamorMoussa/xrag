@@ -76,14 +76,8 @@ class S3StorageService(StorageService):
 
         body = response["Body"]
 
-        def chunks():
-            try:
-                yield from body.iter_chunks(chunk_size=64 * 1024)
-            finally:
-                body.close()
-
         return File(
-            content=chunks(),
+            content=body.read(),
             filename=PurePosixPath(object_key).name,
             content_type=response.get("ContentType"),
         )

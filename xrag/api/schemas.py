@@ -12,3 +12,9 @@ class DownloadArgs(BaseModel):
     document_id: str
     ext: str
     storage_type: Literal["raw", "parsed", "chunks"] = "raw"
+
+
+class ParseArgs(BaseModel):
+    workspace_id: str
+    document_id: str
+    ext: str

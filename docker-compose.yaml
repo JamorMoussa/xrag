@@ -10,7 +10,6 @@ services:
     ports:
       - "8000:8000"
 
-
   rustfs:
     image: rustfs/rustfs:latest
     restart: unless-stopped
@@ -34,5 +33,53 @@ services:
     restart: unless-stopped
 
 
+  temporal-init:
+    image: temporalio/temporal:latest
+    user: "0:0"
+    entrypoint: ["sh", "-c", "chown -R 1000:1000 /data"]
+    volumes:
+      - temporal_data:/data
+    restart: "no"
+
+  temporal:
+    image: temporalio/temporal:latest
+    depends_on:
+      temporal-init:
+        condition: service_completed_successfully
+    command:
+      - server
+      - start-dev
+      - --ip
+      - "0.0.0.0"
+      - --db-filename
+      - /data/temporal.db
+    ports:
+      - "7233:7233" # Temporal gRPC
+      - "8233:8233" # Temporal UI
+    volumes:
+      - temporal_data:/data
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "127.0.0.1:7233"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ingest.worker
+    command: ["python", "-m", "xrag.jobs.ingest.worker"]
+    env_file:
+      - .env
+
+    depends_on:
+      temporal:
+        condition: service_healthy
+
+
 volumes:
   rustfs_data:
+  temporal_data:
