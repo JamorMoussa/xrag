@@ -22,8 +22,8 @@ class StorageType(Enum):
 
 @dataclass
 class StorageKey:
-    document_id: str
     workspace_id: str
+    document_id: str
     storage_type: StorageType
     content_type: str 
     ext: str
@@ -31,7 +31,6 @@ class StorageKey:
     def get_key(
         self, 
     ):
-
         name = None 
 
         if self.storage_type is StorageType.RAW:

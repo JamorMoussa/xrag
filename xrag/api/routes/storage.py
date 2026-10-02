@@ -27,7 +27,7 @@ async def upload(
     args: Annotated[UploadArgs, Depends(upload_args)],
     file: UploadFile,
     storage_service: Annotated[StorageService, Depends(get_storage_service)],
-):
+):  
     if args.document_id is None:
         document_id = generate_uuid()
     else:
@@ -50,6 +50,9 @@ async def upload(
     key = storage_service.upload(
         file=storage_file, storage_key=storage_key
     )
+
+    # TODO: save metadata on postgresql db:
+    ## after saving the document on storage service, save the metadata on realtion db.
 
     return {
         "document_id": document_id,

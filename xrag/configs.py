@@ -6,6 +6,9 @@ class Configs(BaseSettings):
     API_NAME: str
     API_VERSION: str
 
+    #--- Services:
+    STORAGE_BASE_URL: str 
+
     S3_ENDPOINT_URL: str
     S3_ACCESS_KEY: str
     S3_SECRET_KEY: str
