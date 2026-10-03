@@ -1,13 +1,11 @@
 from temporalio import activity
-from io import BytesIO
 
 from xrag.configs import Configs
-from xrag.api.schemas import ParseArgs
+from xrag.api.schemas import IngestArgs
 from xrag.services.storage import (
-    StorageType, S3StorageService, File, StorageKey
+    S3StorageService, PathObject, FileObject
 )
 from xrag.services.ingestion.parse import LiteParserService
-from xrag.utils import get_object_key
 
 
 class ParseActivity:
@@ -29,20 +27,20 @@ class ParseActivity:
     @activity.defn
     async def parse(
         self,
-        args: ParseArgs
+        args: IngestArgs
     ):
 
-        # TODO: Make code as utils to use here, and in /download endpoint.
-
-        key = get_object_key(
-            workspace_id=args.workspace_id,
-            document_id=args.document_id,
-            name=args.document_id,
-            ext=args.ext
+        path_parsed = PathObject(
+                workspace_id=args.workspace_id,
+                document_id=args.document_id,
+                document_type="parsed"
         )
 
-        file = self.storage_service.download(
-            object_key=key
+        file: FileObject = self.storage_service.load(
+            path=PathObject(
+                workspace_id=args.workspace_id,
+                document_id=args.document_id
+            )
         )
 
         document = await self.parser.parse(
@@ -51,22 +49,16 @@ class ParseActivity:
             content_type=file.content_type,
         )
 
-        key = self.storage_service.upload(
-            file=File(
-                content=BytesIO(document.model_dump_json().encode("utf-8")),
-                filename="parsed.json", 
+        self.storage_service.save(
+            file=FileObject(
+                content=document.model_dump_json().encode("utf-8"),
+                filename="parsed.json",
                 content_type="application/json"
             ),
-            storage_key=StorageKey(
-                document_id=args.document_id,
-                workspace_id=args.workspace_id,
-                storage_type=StorageType("parsed"),
-                content_type="application/json",
-                ext=".json"
-            )
+            path=path_parsed
         )
 
         return {
             "status": "parsed",
-            "key": key
+            "key": path_parsed.key
         }

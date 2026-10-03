@@ -1,15 +1,20 @@
 from botocore.config import Config as BotoConfig
-from pathlib import PurePosixPath
+from botocore.exceptions import ClientError
+from io import BytesIO
 import boto3
+import json 
 
 from .base import (
-    StorageService, File, StorageKey, StorageType
+    StorageService, FileObject, PathObject
 )
+from .base import Manifest, Artifact, ArtifactType
 from xrag.configs import Configs
-from xrag.utils import get_object_key
+
 
 
 class S3StorageService(StorageService):
+
+    # TODO: Delegate manifest management to a dedicated class.
 
     def __init__(
         self,
@@ -28,56 +33,133 @@ class S3StorageService(StorageService):
             )
         )
 
-    def upload(
+    def save(
         self, 
-        file: File,
-        storage_key: StorageKey
-    ) -> str:
-
-        name = None 
-
-        if storage_key.storage_type is StorageType.RAW:
-            name = storage_key.document_id
-        else:
-            name = storage_key.storage_type.value
-
-        key = get_object_key(
-            workspace_id=storage_key.workspace_id,
-            document_id=storage_key.document_id,
-            name=name,
-            ext=storage_key.ext
-        )
-
+        file: FileObject, 
+        path: PathObject, 
+    ):
         extra_args = {}
 
-        if content_type := storage_key.content_type:
+        if content_type := file.content_type:
             extra_args["ContentType"] = content_type
 
+        manifest: Manifest | None = None 
+
+        # Load old Manifest:
+        if path.is_new:
+            manifest = Manifest(
+                workspace_id=path.workspace_id, document_id=path.document_id
+            )
+        else:
+            manifest = self.load_manifest(path=path)
+ 
+        # Save the object File: 
         self.client.upload_fileobj(
-            Fileobj=file.content,
+            Fileobj=BytesIO(file.content),
             Bucket=self.configs.S3_BUCKET,
-            Key=key,
+            Key=path.key,
             ExtraArgs=extra_args or None,
         )
 
-        return key
+        manifest.add_artifact(
+            artifact=Artifact(
+                type_=ArtifactType(path.document_type), 
+                filename=file.filename,
+                content_type=file.content_type
+            )
+        )
 
-    def delete():
-        pass
+        # Update Manifest: 
+        self.save_manifest(
+            path=path, manifest=manifest
+        )
+        
 
-    def download(
-        self, object_key: str
-    ) -> File:
+    def load(
+        self,
+        path: PathObject
+    ) -> FileObject:
+
+        manifest = self.load_manifest(path=path)
+
+        if path.document_type == "manifest":
+
+            file = FileObject(
+                content=manifest.asbytes(),
+                filename=path.filename,
+                content_type=manifest.content_type
+            )
+
+            return file
 
         response = self.client.get_object(
             Bucket=self.configs.S3_BUCKET,
-            Key=object_key,
+            Key=path.key,
         )
 
         body = response["Body"]
 
-        return File(
+        return FileObject(
             content=body.read(),
-            filename=PurePosixPath(object_key).name,
+            filename=manifest.artifacts[ArtifactType(path.document_type)].filename,
             content_type=response.get("ContentType"),
         )
+
+    def load_manifest(
+        self, 
+        path: PathObject
+    ) -> Manifest:
+
+        manifest_path = (
+            path.model_copy(update={
+                "document_type": "manifest"
+            })
+        )
+
+        response = self.client.get_object(
+            Bucket=self.configs.S3_BUCKET,
+            Key=manifest_path.key,
+        )
+
+        print("key", manifest_path.key)
+
+        body = response["Body"]
+
+        file = FileObject(
+            content=body.read(),
+            filename=manifest_path.filename,
+            content_type=response.get("ContentType"),
+        )
+
+        return Manifest(**json.loads(file.content))
+
+
+    def save_manifest(
+        self, 
+        path: PathObject,
+        manifest: Manifest
+    ):
+        
+        manifest_path = (
+            path.model_copy(update={
+                "document_type": "manifest"
+            })
+        )
+
+        self.client.upload_fileobj(
+            Fileobj=BytesIO(
+                manifest.model_dump_json().encode("utf-8")
+            ),
+            Bucket=self.configs.S3_BUCKET,
+            Key=manifest_path.key,
+        )
+
+    def raw_exists(
+        self, path: PathObject
+    ) -> bool:
+        try:
+            self.client.head_object(Bucket=self.configs.S3_BUCKET, Key=path.key)
+        except ClientError as e:
+            return False
+
+        return True

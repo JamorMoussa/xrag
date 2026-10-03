@@ -1,4 +1,4 @@
 from .base import (
-    StorageService, File, StorageKey, StorageType
+    StorageService, FileObject, PathObject
 )
 from .s3 import S3StorageService

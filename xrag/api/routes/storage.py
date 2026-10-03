@@ -1,19 +1,20 @@
 from fastapi import (
-    APIRouter, UploadFile, Depends
+    APIRouter, UploadFile, Depends, Form
 )
 from fastapi.responses import StreamingResponse
-from typing import Annotated
+from botocore.exceptions import ClientError
+from typing import Annotated, Literal
 from pathlib import Path
+from io import BytesIO
 
 from xrag.configs import configs
-from xrag.utils import get_object_key
-from ..schemas import UploadArgs, DownloadArgs
-from ..deps import (
-    get_storage_service, generate_uuid, upload_args, download_args
-)
 from xrag.services.storage import (
-    StorageService, File, StorageKey, StorageType
+    PathObject, FileObject, S3StorageService
 )
+from ..deps import (
+    get_storage_service, path_args
+)
+from ...exceptions import DocumentNotFoundError
 
 storage_router = APIRouter(
     prefix= str(
@@ -21,70 +22,58 @@ storage_router = APIRouter(
     )
 )
 
-
 @storage_router.post("/upload")
 async def upload(
-    args: Annotated[UploadArgs, Depends(upload_args)],
+    path: Annotated[PathObject, Depends(path_args)],
     file: UploadFile,
-    storage_service: Annotated[StorageService, Depends(get_storage_service)],
+    storage_service: Annotated[S3StorageService, Depends(get_storage_service)],
 ):  
-    if args.document_id is None:
-        document_id = generate_uuid()
-    else:
-        document_id = args.document_id
+    try:
+        storage_service.save(
+            file=FileObject(
+                content=await file.read(), 
+                filename=file.filename,
+                content_type=file.content_type
+            ),
+            path=path
+        )
+    except ClientError as exc:
+        error_code = exc.response["Error"]["Code"]
 
-    storage_key = StorageKey(
-        workspace_id=args.workspace_id,
-        document_id=document_id,
-        storage_type=StorageType(args.storage_type),
-        content_type=file.content_type,
-        ext=Path(file.filename).suffix
-    )
+        if error_code == "NoSuchKey":
+            raise DocumentNotFoundError(
+                key=path.key
+            ) from exc
 
-    storage_file = File(
-        content=file.file,
-        filename=file.filename,
-        content_type=file.content_type
-    )
-
-    key = storage_service.upload(
-        file=storage_file, storage_key=storage_key
-    )
-
-    # TODO: save metadata on postgresql db:
-    ## after saving the document on storage service, save the metadata on realtion db.
+        raise
 
     return {
-        "document_id": document_id,
-        "key": key
+        "message": "ok", 
+        "key": path.key 
     }
 
-# TODO: handle the error: botocore.errorfactory.NoSuchKey
+
 @storage_router.post("/download")
 async def download(
-    args: DownloadArgs,
-    storage_service: Annotated[StorageService, Depends(get_storage_service)],
-):
-    name = None 
+    path: PathObject,
+    storage_service: Annotated[S3StorageService, Depends(get_storage_service)],
+) -> StreamingResponse:
+    try:
+        file = storage_service.load(path=path)
+    except ClientError as exc:
+        error_code = exc.response["Error"]["Code"]
 
-    if StorageType(args.storage_type) is StorageType.RAW:
-        name = args.document_id
-    else:
-        name = args.storage_type
+        if error_code == "NoSuchKey":
+            raise DocumentNotFoundError(
+                key=path.key
+            ) from exc
 
-    key = get_object_key(
-        workspace_id=args.workspace_id,
-        document_id=args.document_id,
-        name=name,
-        ext=args.ext
-    )
-
-    file = storage_service.download(
-        object_key=key
-    )
+        raise
 
     return StreamingResponse(
-        content = file.content, 
+        content=BytesIO(file.content),
         media_type=file.content_type,
-        headers={"Content-Disposition": f"attachment; filename={file.filename}"}
+        headers={
+            "Content-Disposition": f'attachment; filename="{file.filename}"'
+        }
     )
