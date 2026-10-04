@@ -21,7 +21,7 @@ class FileObject(BaseModel):
 class PathObject(BaseModel):
     workspace_id: str
     document_id: Optional[str] = None
-    document_type: Literal["raw", "parsed", "chunked", "manifest"] = "raw"
+    document_type: Literal["raw", "parsed", "chunks", "manifest"] = "raw"
     is_new: bool = False
 
     @model_validator(mode="before")
@@ -54,7 +54,7 @@ class PathObject(BaseModel):
 class ArtifactType(str, Enum):
     RAW = "raw"
     PARSED = "parsed"
-    CHUNKED = "chunked"
+    CHUNKS = "chunks"
     MANIFEST = "manifest"
 
 class Artifact(BaseModel):

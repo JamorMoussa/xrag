@@ -121,8 +121,6 @@ class S3StorageService(StorageService):
             Key=manifest_path.key,
         )
 
-        print("key", manifest_path.key)
-
         body = response["Body"]
 
         file = FileObject(
