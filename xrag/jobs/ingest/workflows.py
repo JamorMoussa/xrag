@@ -3,7 +3,7 @@ from datetime import timedelta
 
 with workflow.unsafe.imports_passed_through():
     from .activities import (
-        ParsingActivity, ChunkingActivity
+        ParsingActivity, ChunkingActivity, EmbeddingActivity
     )
     from xrag.api.schemas import IngestArgs
 
@@ -23,6 +23,12 @@ class IngestionWorkflow:
 
         await workflow.execute_activity_method(
             ChunkingActivity.chunk,
+            args,
+            start_to_close_timeout=timedelta(minutes=3),
+        )
+
+        await workflow.execute_activity_method(
+            EmbeddingActivity.embed,
             args,
             start_to_close_timeout=timedelta(minutes=3),
         )

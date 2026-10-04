@@ -8,7 +8,6 @@ class Configs(BaseSettings):
 
     #--- Services:
     STORAGE_BASE_URL: str 
-
     S3_ENDPOINT_URL: str
     S3_ACCESS_KEY: str
     S3_SECRET_KEY: str
@@ -26,6 +25,16 @@ class Configs(BaseSettings):
     TEMPORAL_HOST: str
     TEMPORAL_NAMESPACE: str
     TEMPORAL_TASK_QUEUE: str
+
+    # ----- Ollama
+    EMBEDDING_PROVIDER: str
+    EMBEDDING_MODEL: str
+    EMBEDDING_BASE_URL: str
+
+    # ----- VecDB
+    VECDB_PROVIDER: str
+    VECDB_BASE_URL: str
+    VECDB_COLLECTION: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
