@@ -67,7 +67,7 @@ services:
 
     restart: unless-stopped
 
-  worker:
+  ingest-worker:
     build:
       context: .
       dockerfile: docker/Dockerfile.ingest.worker
@@ -80,6 +80,82 @@ services:
         condition: service_healthy
 
 
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+
+    volumes:
+      - ollama_data:/root/.ollama
+
+    ports:
+      - "11434:11434"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "ollama",
+          "list"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+    # Uncomment if using NVIDIA GPU
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities:
+                - gpu
+
+
+  ollama-init:
+    image: ollama/ollama:latest
+    restart: "no"
+
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:?Set EMBEDDING_MODEL in .env}
+
+    entrypoint:
+      - /bin/sh
+      - -c
+
+    command:
+      - |
+        echo "Checking Ollama..."
+        ollama list
+
+        echo "Pulling embedding model: $${EMBEDDING_MODEL}"
+        ollama pull "$${EMBEDDING_MODEL}"
+
+        echo "Embedding model ready."
+
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+
+    ports:
+      - "6333:6333"
+
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+
 volumes:
   rustfs_data:
   temporal_data:
+  ollama_data:
+  qdrant_data:

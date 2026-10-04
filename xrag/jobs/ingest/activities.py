@@ -10,7 +10,9 @@ from xrag.services.storage import (
     S3StorageService, PathObject, FileObject
 )
 from xrag.models import Document, ChunkList, Chunk, ChunkMetadata
-from xrag.services.ingestion.parse import LiteParserService
+from xrag.services.ingest.parse import LiteParserService
+from xrag.services.embed import OpenAIEmbeddingService
+from xrag.services.vecdb import QdrantVecDBService
 
 
 class ParsingActivity:
@@ -92,6 +94,44 @@ class ChunkingActivity:
             chunk_overlap=50,
         )
 
+    def normalize_nodes(
+        self,
+        nodes: list[TextNode],
+        min_chars: int = 100,
+    ) -> list[TextNode]:
+
+        result: list[TextNode] = []
+        buffer = ""
+
+        for node in nodes:
+            text = node.text.strip()
+
+            is_heading = (
+                text.startswith("#")
+                and "\n" not in text
+            )
+
+            if is_heading:
+                buffer = text
+                continue
+
+            if buffer:
+                text = f"{buffer}\n\n{text}"
+                buffer = ""
+
+            if len(text) < min_chars and result:
+                result[-1].text = (
+                    result[-1].text.rstrip()
+                    + "\n\n"
+                    + text
+                )
+                continue
+
+            node.text = text
+            result.append(node)
+
+        return result
+
     @activity.defn
     async def chunk(
         self,
@@ -122,6 +162,10 @@ class ChunkingActivity:
             self.parser.get_nodes_from_documents(
                 documents=llamaindex_documents
             )
+        )
+
+        sections = self.normalize_nodes(
+            sections
         )
 
         nodes: list[TextNode] = self.splitter(sections)
@@ -160,3 +204,68 @@ class ChunkingActivity:
                 workspace_id=args.workspace_id, document_id=args.document_id, document_type="chunks"
             ).key
         }
+
+
+class EmbeddingActivity:
+
+    def __init__(
+        self, 
+        configs: Configs,
+    ):
+        self.storage_service = S3StorageService(
+            configs=configs
+        )
+
+        self.embed_service = OpenAIEmbeddingService(
+            configs=configs
+        )
+
+        self.vecdb_service = QdrantVecDBService(
+            configs=configs
+        )
+
+    @activity.defn
+    async def embed(
+        self, 
+        args: IngestArgs
+    ) -> IngestArgs:
+
+        batch_size: int = 32
+
+        file: FileObject = self.storage_service.load(
+            path=PathObject(
+                workspace_id=args.workspace_id,
+                document_id=args.document_id,
+                document_type="chunks"
+            )
+        )
+
+        chunks = ChunkList.model_validate_json(
+            file.content
+        ).chunks
+
+        for i in range(0, len(chunks), batch_size):
+            batch = chunks[i:i + batch_size]
+
+            await self.embed_upsert(
+                chunks=batch
+            )
+
+        return args
+
+    async def embed_upsert(
+        self, 
+        chunks: list[Chunk]
+    ):
+        texts = [
+            chunk.text
+            for chunk in chunks
+        ]
+
+        embeddings = await self.embed_service.embed(
+            texts=texts
+        )
+
+        await self.vecdb_service.upsert(
+            chunks=chunks, embeddings=embeddings
+        )

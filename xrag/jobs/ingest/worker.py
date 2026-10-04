@@ -4,7 +4,7 @@ import asyncio
 
 from xrag.jobs.ingest.workflows import IngestionWorkflow
 from xrag.jobs.ingest.activities import (
-    ParsingActivity, ChunkingActivity
+    ParsingActivity, ChunkingActivity, EmbeddingActivity
 )
 from xrag.configs import configs
 
@@ -16,13 +16,14 @@ async def main():
     )
 
     parse_activity = ParsingActivity(configs=configs).parse
-    chunk_activity = ChunkingActivity(configs=configs).chunk
+    chunk_activity = ChunkingActivity(configs=configs).chunk 
+    embed_activity = EmbeddingActivity(configs=configs).embed
 
     worker_ingest_process = Worker(
         temporal_client,
         task_queue=configs.TEMPORAL_TASK_QUEUE,
         workflows=[IngestionWorkflow],
-        activities=[parse_activity, chunk_activity],
+        activities=[parse_activity, chunk_activity, embed_activity],
     )
 
     await worker_ingest_process.run()

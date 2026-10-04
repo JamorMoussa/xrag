@@ -5,6 +5,7 @@ from uuid import uuid4
 from xrag.services.storage import (
     S3StorageService, StorageService, PathObject
 )
+from xrag.services.retrieve import RetrievalService
 from xrag.configs import Configs, get_configs
 
 
@@ -15,6 +16,11 @@ def get_storage_service(
     configs: Annotated[Configs, Depends(get_configs)]
 ) -> StorageService:
     return S3StorageService(configs=configs)
+
+def get_retrieve_service(
+    configs: Annotated[Configs, Depends(get_configs)]
+) -> RetrievalService:
+    return RetrievalService(configs=configs)
 
 def path_args(
     workspace_id: Annotated[str, Form()],
