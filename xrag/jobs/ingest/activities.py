@@ -79,6 +79,8 @@ class ChunkingActivity:
         self, 
         configs: Configs,
     ):
+        self.configs = configs
+
         self.storage_service = S3StorageService(
             configs=configs
         )
@@ -181,7 +183,9 @@ class ChunkingActivity:
                         document_id=args.document_id,
                         page=node.metadata["page"],
                         chunk_size=512,
-                        chunk_overlap=50
+                        chunk_overlap=50,
+                        embedding_model=self.configs.EMBEDDING_MODEL,
+                        embedding_provider=self.configs.EMBEDDING_PROVIDER
                     )
                 )
                 for node in nodes

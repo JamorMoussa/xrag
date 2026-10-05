@@ -1,6 +1,7 @@
 from xrag.configs import Configs
 from xrag.services.embed import OpenAIEmbeddingService
 from xrag.services.vecdb import QdrantVecDBService
+from xrag.models import ContextSnippet
 
 
 class RetrievalService:
@@ -18,7 +19,7 @@ class RetrievalService:
         self, 
         query: str,
         top_k: int = 5,
-    ):
+    ) -> list[ContextSnippet]:
         embeddings = (
             await self.embed_service.embed(
                 texts=query

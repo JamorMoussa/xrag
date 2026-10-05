@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Annotated
 
 from xrag.configs import configs
+from xrag.models import ContextSnippet
 from xrag.services.retrieve import RetrievalService
 from ..deps import get_retrieve_service
 
@@ -14,13 +15,16 @@ retrieve_router = APIRouter(
 )
 
 class Query(BaseModel):
-    query: str 
+    query: str
+    top_k: int = 5
 
 @retrieve_router.get("/retrieve")
 async def retrieve(
     query: Query,
     retrieve_service: Annotated[RetrievalService, Depends(get_retrieve_service)]
-):
+) -> list[ContextSnippet]:
+
+    # TODO: impl the re-ranking method for best retrieving resutls.
     return await retrieve_service.search(
-        query=query.query
+        query=query.query, top_k=query.top_k
     )
