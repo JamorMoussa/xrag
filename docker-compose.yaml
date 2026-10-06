@@ -127,6 +127,7 @@ services:
     environment:
       OLLAMA_HOST: http://ollama:11434
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:?Set EMBEDDING_MODEL in .env}
+      CHAT_MODEL_NAME: ${CHAT_MODEL_NAME:?Set CHAT_MODEL_NAME in .env}
 
     entrypoint:
       - /bin/sh
@@ -134,13 +135,17 @@ services:
 
     command:
       - |
+        set -eu
         echo "Checking Ollama..."
         ollama list
 
         echo "Pulling embedding model: $${EMBEDDING_MODEL}"
         ollama pull "$${EMBEDDING_MODEL}"
 
-        echo "Embedding model ready."
+        echo "Pulling chat model: $${CHAT_MODEL_NAME}"
+        ollama pull "$${CHAT_MODEL_NAME}"
+
+        echo "Embedding and chat models ready."
 
 
   qdrant:

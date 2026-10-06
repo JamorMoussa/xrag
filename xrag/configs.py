@@ -31,6 +31,13 @@ class Configs(BaseSettings):
     EMBEDDING_MODEL: str
     EMBEDDING_BASE_URL: str
 
+
+    # ---- ChatModel:
+    CHAT_MODEL_PROVIDER: str
+    CHAT_MODEL_NAME: str
+    CHAT_MODEL_BASE_URL: str
+    CHAT_MODEL_API_KEY: str
+
     # ----- VecDB
     VECDB_PROVIDER: str
     VECDB_BASE_URL: str
