@@ -55,8 +55,43 @@ class ChunkList(XRAGModel):
     chunks: list[Chunk]
 
 
-class ContextSnippet(XRAGModel):
+class RetrievedSnippet(XRAGModel):
     text: str 
     score: float
 
     metadata: dict = Field(default_factory=dict)
+
+class AugmentedQuery(XRAGModel):
+
+    query: str
+    ctx: list[RetrievedSnippet]
+
+    # TODO: Add History Messages
+
+    @property
+    def instructions(
+        self
+    ) -> str:
+        return "\n".join([
+            "You are a RAG question-answering assistant.",
+            "Answer the user's question using only the provided context.",
+            "Rules:",
+            "- Do not use outside knowledge.",
+            "- If the answer cannot be found in the context, say that the provided documents do not contain enough information.",
+            "- Be concise and precise.",
+            "- Cite sources using [Source N].",
+            "- Do not invent citations.",
+        ])
+
+    @property
+    def input(self) -> str:
+        return "\n".join([
+            "Question:", f"{self.query}", "Retrieved context:", f"{self.context}"
+        ])
+
+    @property
+    def context(self) -> str:
+        return "\n\n".join([
+            f"## Chunk {i}:\n {s.text}"
+            for i, s in enumerate(self.ctx)
+        ])

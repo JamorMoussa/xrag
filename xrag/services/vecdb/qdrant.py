@@ -2,7 +2,7 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import PointStruct, Distance, VectorParams
 
 from .base import VecDBService
-from xrag.models import Chunk, ContextSnippet
+from xrag.models import Chunk, RetrievedSnippet
 from xrag.configs import Configs
 
 
@@ -72,7 +72,7 @@ class QdrantVecDBService(VecDBService):
         self,
         query_embedding: list[float],
         top_k: int = 5
-    ) -> list[ContextSnippet]:
+    ) -> list[RetrievedSnippet]:
         
         result = await self.client.query_points(
             collection_name=self.configs.VECDB_COLLECTION,
@@ -85,7 +85,7 @@ class QdrantVecDBService(VecDBService):
         result = result.points
 
         return [
-            ContextSnippet(
+            RetrievedSnippet(
                 text=r.payload["text"], score=r.score, 
                 metadata={
                     k:v for k, v in r.payload.items() if k != "text"

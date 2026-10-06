@@ -6,6 +6,7 @@ from xrag.services.storage import (
     S3StorageService, StorageService, PathObject
 )
 from xrag.services.retrieve import RetrievalService
+from xrag.services.qna import QnAService
 from xrag.configs import Configs, get_configs
 
 
@@ -21,6 +22,11 @@ def get_retrieve_service(
     configs: Annotated[Configs, Depends(get_configs)]
 ) -> RetrievalService:
     return RetrievalService(configs=configs)
+
+def get_qna_service(
+    configs: Annotated[Configs, Depends(get_configs)]
+) -> QnAService:
+    return QnAService(configs=configs)
 
 def path_args(
     workspace_id: Annotated[str, Form()],
