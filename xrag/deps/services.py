@@ -1,0 +1,55 @@
+from xrag.configs import Configs
+from xrag.services.storage import StorageService, S3StorageService
+from xrag.services.embed import EmbeddingService, OpenAIEmbeddingService
+from xrag.services.vecdb import VecDBService, QdrantVecDBService
+from xrag.services.ingest.parse import ParserService, LiteParserService
+from xrag.services.retrieve import RetrievalService
+from xrag.services.qna.llms import ChatService
+from xrag.services.qna import QnAService
+
+
+def get_storage_service(
+    configs: Configs,
+) -> StorageService:
+    return S3StorageService(
+        configs=configs,
+    )
+
+
+def get_embed_service(
+    configs: Configs,
+) -> EmbeddingService:
+    return OpenAIEmbeddingService(
+        configs=configs,
+    )
+
+
+def get_vecdb_service(
+    configs: Configs,
+) -> VecDBService:
+    return QdrantVecDBService(
+        configs=configs,
+    )
+
+
+def get_parser_service(
+    configs: Configs,
+) -> ParserService:
+    return LiteParserService(
+        configs=configs,
+    )
+
+
+def get_retrieval_service(
+    embed_service: EmbeddingService,
+    vecdb_service: VecDBService,
+) -> RetrievalService:
+    return RetrievalService(
+        embed_service=embed_service,
+        vecdb_service=vecdb_service,
+    )
+
+def get_qna_service(
+    chat_service: ChatService
+) -> QnAService:
+    return QnAService(chat_service=chat_service)

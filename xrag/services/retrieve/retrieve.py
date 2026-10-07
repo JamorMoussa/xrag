@@ -1,6 +1,5 @@
-from xrag.configs import Configs
-from xrag.services.embed import OpenAIEmbeddingService
-from xrag.services.vecdb import QdrantVecDBService
+from xrag.services.embed import EmbeddingService
+from xrag.services.vecdb import VecDBService
 from xrag.models import RetrievedSnippet
 
 
@@ -8,12 +7,11 @@ class RetrievalService:
 
     def __init__(
         self,
-        configs: Configs
+        embed_service: EmbeddingService,
+        vecdb_service: VecDBService
     ):
-
-        self.embed_service = OpenAIEmbeddingService(configs=configs)
-
-        self.vecdb_service = QdrantVecDBService(configs=configs)
+        self.embed_service = embed_service
+        self.vecdb_service = vecdb_service
 
     async def search(
         self, 

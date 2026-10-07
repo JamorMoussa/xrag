@@ -7,29 +7,23 @@ import json
 from xrag.configs import Configs
 from xrag.api.schemas import IngestArgs
 from xrag.services.storage import (
-    S3StorageService, PathObject, FileObject
+    StorageService, PathObject, FileObject
 )
 from xrag.models import Document, ChunkList, Chunk, ChunkMetadata
-from xrag.services.ingest.parse import LiteParserService
-from xrag.services.embed import OpenAIEmbeddingService
-from xrag.services.vecdb import QdrantVecDBService
+from xrag.services.ingest.parse import ParserService
+from xrag.services.embed import EmbeddingService
+from xrag.services.vecdb import VecDBService
 
 
 class ParsingActivity:
 
     def __init__(
-        self, 
-        configs: Configs
+        self,
+        storage_service: StorageService,
+        parser_service: ParserService
     ):
-        self.configs = configs
-
-        self.storage_service = S3StorageService(
-            configs=configs
-        )
-
-        self.parser = LiteParserService(
-            configs=configs
-        )
+        self.storage_service = storage_service
+        self.parser_service = parser_service
 
     @activity.defn
     async def parse(
@@ -50,7 +44,7 @@ class ParsingActivity:
             )
         )
 
-        document = await self.parser.parse(
+        document = await self.parser_service.parse(
             content=file.content,
             filename=file.filename,
             content_type=file.content_type,
@@ -78,12 +72,10 @@ class ChunkingActivity:
     def __init__(
         self, 
         configs: Configs,
+        storage_service: StorageService
     ):
         self.configs = configs
-
-        self.storage_service = S3StorageService(
-            configs=configs
-        )
+        self.storage_service = storage_service
 
         self.parser = MarkdownNodeParser.from_defaults(
             include_metadata=True,
@@ -213,20 +205,14 @@ class ChunkingActivity:
 class EmbeddingActivity:
 
     def __init__(
-        self, 
-        configs: Configs,
+        self,
+        storage_service: StorageService,
+        embed_service: EmbeddingService,
+        vecdb_service: VecDBService
     ):
-        self.storage_service = S3StorageService(
-            configs=configs
-        )
-
-        self.embed_service = OpenAIEmbeddingService(
-            configs=configs
-        )
-
-        self.vecdb_service = QdrantVecDBService(
-            configs=configs
-        )
+        self.storage_service = storage_service
+        self.embed_service = embed_service
+        self.vecdb_service = vecdb_service
 
     @activity.defn
     async def embed(

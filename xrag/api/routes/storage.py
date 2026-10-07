@@ -9,12 +9,10 @@ from io import BytesIO
 
 from xrag.configs import configs
 from xrag.services.storage import (
-    PathObject, FileObject, S3StorageService
+    PathObject, FileObject
 )
-from ..deps import (
-    get_storage_service, path_args
-)
-from ...exceptions import DocumentNotFoundError
+from xrag.deps import StorageDep
+from xrag.exceptions import DocumentNotFoundError
 
 storage_router = APIRouter(
     prefix= str(
@@ -22,11 +20,25 @@ storage_router = APIRouter(
     )
 )
 
+def path_args(
+    workspace_id: Annotated[str, Form()],
+    document_type: Annotated[
+        Literal["raw", "parsed", "chunked", "manifest"] | None, Form()
+    ] = "raw",
+    document_id: Annotated[str | None, Form()] = None,
+) -> PathObject:
+    
+    return PathObject(
+        workspace_id=workspace_id,
+        document_type=document_type,
+        document_id=document_id,
+    )
+
 @storage_router.post("/upload")
 async def upload(
     path: Annotated[PathObject, Depends(path_args)],
     file: UploadFile,
-    storage_service: Annotated[S3StorageService, Depends(get_storage_service)],
+    storage_service: StorageDep,
 ):  
     try:
         storage_service.save(
@@ -56,7 +68,7 @@ async def upload(
 @storage_router.post("/download")
 async def download(
     path: PathObject,
-    storage_service: Annotated[S3StorageService, Depends(get_storage_service)],
+    storage_service: StorageDep,
 ) -> StreamingResponse:
     try:
         file = storage_service.load(path=path)
