@@ -5,7 +5,7 @@ from llama_index.core.schema import TextNode
 import json 
 
 from xrag.configs import Configs
-from xrag.api.schemas import IngestArgs
+from .schemas import IngestArgs
 from xrag.services.storage import (
     StorageService, PathObject, FileObject
 )

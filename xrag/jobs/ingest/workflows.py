@@ -5,7 +5,7 @@ with workflow.unsafe.imports_passed_through():
     from .activities import (
         ParsingActivity, ChunkingActivity, EmbeddingActivity
     )
-    from xrag.api.schemas import IngestArgs
+    from .schemas import IngestArgs
 
 @workflow.defn
 class IngestionWorkflow:
