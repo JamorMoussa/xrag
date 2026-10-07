@@ -8,6 +8,13 @@ from xrag.jobs.ingest.activities import (
 )
 from xrag.configs import configs
 
+from xrag.deps.services import (
+    get_storage_service,
+    get_embed_service,
+    get_vecdb_service,
+    get_parser_service,
+)
+
 async def main():
 
     temporal_client = await Client.connect(
@@ -15,9 +22,40 @@ async def main():
         namespace=configs.TEMPORAL_NAMESPACE,
     )
 
-    parse_activity = ParsingActivity(configs=configs).parse
-    chunk_activity = ChunkingActivity(configs=configs).chunk 
-    embed_activity = EmbeddingActivity(configs=configs).embed
+
+    storage_service = get_storage_service(
+        configs=configs,
+    )
+
+    embed_service = get_embed_service(
+        configs=configs,
+    )
+
+    vecdb_service = get_vecdb_service(
+        configs=configs,
+    )
+
+    parser_service = get_parser_service(
+        configs=configs,
+    )
+
+    parse_activity = (
+        ParsingActivity(
+            storage_service=storage_service, parser_service=parser_service
+        ).parse
+    )
+
+    chunk_activity = (
+        ChunkingActivity(
+            configs=configs, storage_service=storage_service
+        ).chunk
+    )
+
+    embed_activity = (
+        EmbeddingActivity(
+            storage_service=storage_service, embed_service=embed_service, vecdb_service=vecdb_service
+        ).embed
+    )
 
     worker_ingest_process = Worker(
         temporal_client,

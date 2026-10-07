@@ -1,15 +1,13 @@
 from temporalio.contrib.pydantic import pydantic_data_converter
 from temporalio.client import Client
 
-from fastapi import APIRouter, status, Depends
-from typing import Annotated
+from fastapi import APIRouter, status
 from pathlib import Path
 from uuid import uuid4
 
-
-from xrag.services.storage import PathObject, S3StorageService
+from xrag.services.storage import PathObject
 from xrag.exceptions import DocumentNotFoundError
-from ..deps import get_storage_service
+from xrag.deps import StorageDep
 from xrag.configs import configs
 
 
@@ -23,7 +21,7 @@ jobs_router = APIRouter(
 @jobs_router.post("/ingest", status_code=status.HTTP_202_ACCEPTED)
 async def ingest(
     path: PathObject,
-    storage_service: Annotated[S3StorageService, Depends(get_storage_service)],
+    storage_service: StorageDep,
 ) -> dict:
 
     if not storage_service.raw_exists(path=path):
