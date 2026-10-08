@@ -1,5 +1,6 @@
 xrag_old/
 docker-compose-old.yaml
+models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
