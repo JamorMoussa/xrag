@@ -6,15 +6,15 @@ from xrag.configs import Configs, get_configs
 from xrag.services.storage import StorageService
 from xrag.services.embed import EmbeddingService
 from xrag.services.vecdb import VecDBService
-from xrag.services.retrieve import RetrievalService
+from xrag.services.retrieve import RetrievalService, ReRankerService
 from xrag.services.ingest.parse import ParserService
 from xrag.services.qna import QnAService
-from xrag.services.qna.llms import ChatService, OpenAIChatService
+from xrag.services.qna.llms import ChatService
 
 from .services import (
     get_storage_service, get_embed_service, get_vecdb_service,
     get_retrieval_service, get_parser_service, get_qna_service,
-    get_chat_service, get_temporal_client
+    get_chat_service, get_temporal_client, get_rerank_service
 )
 
 ConfigsDep = Annotated[
@@ -65,13 +65,25 @@ ChatDep = Annotated[
     Depends(chat_dep)
 ]
 
+def reranker_dep(
+    configs: ConfigsDep
+) -> ReRankerService:
+    return get_rerank_service(configs)
+
+ReRankerDep = Annotated[
+    ReRankerService,
+    Depends(reranker_dep)
+]
+
 def retrieval_dep(
     embed_service: EmbeddingDep,
     vecdb_service: VecDBDep,
+    reranker_service: ReRankerDep
 ) -> RetrievalService:
     return get_retrieval_service(
         embed_service=embed_service,
         vecdb_service=vecdb_service,
+        reranker_service=reranker_service
     )
 
 

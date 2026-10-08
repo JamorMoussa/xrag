@@ -109,7 +109,7 @@ services:
       - --models-preset
       - /config/models.ini
       - --models-max
-      - "2"
+      - "3"
 
     deploy:
       resources:
@@ -138,14 +138,18 @@ services:
           http://llamacpp:8080/health
 
         # Native autoload waits for readiness and reuses models already loaded.
-        for model in embedding chat; do
+        for model in embedding chat reranker; do
           echo "Loading $${model}..."
-          curl --fail --silent --show-error --output /dev/null \
+          if ! curl --fail-with-body --silent --show-error \
+            --output /tmp/llamacpp-init-response.json \
             --connect-timeout 5 --max-time 600 \
-            "http://llamacpp:8080/props?model=$${model}&autoload=true"
+            "http://llamacpp:8080/props?model=$${model}&autoload=true"; then
+            cat /tmp/llamacpp-init-response.json
+            exit 1
+          fi
         done
 
-        echo "Embedding and chat models ready."
+        echo "Embedding, chat, and reranker models ready."
 
 
 volumes:

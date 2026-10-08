@@ -6,7 +6,7 @@ from xrag.services.storage import StorageService, S3StorageService
 from xrag.services.embed import EmbeddingService, OpenAIEmbeddingService
 from xrag.services.vecdb import VecDBService, QdrantVecDBService
 from xrag.services.ingest.parse import ParserService, LiteParserService
-from xrag.services.retrieve import RetrievalService
+from xrag.services.retrieve import RetrievalService, ReRankerService
 from xrag.services.qna.llms import ChatService, OpenAIChatService
 from xrag.services.qna import QnAService
 
@@ -42,14 +42,22 @@ def get_parser_service(
         configs=configs,
     )
 
+def get_rerank_service(
+    configs: Configs
+) -> ReRankerService:
+    return ReRankerService(
+        configs=configs
+    )
 
 def get_retrieval_service(
     embed_service: EmbeddingService,
     vecdb_service: VecDBService,
+    reranker_service: ReRankerService
 ) -> RetrievalService:
     return RetrievalService(
         embed_service=embed_service,
         vecdb_service=vecdb_service,
+        reranker_service=reranker_service
     )
 
 def get_chat_service(
