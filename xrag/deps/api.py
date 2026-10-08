@@ -1,5 +1,6 @@
 from fastapi import Depends
 from typing import Annotated
+from temporalio.client import Client
 
 from xrag.configs import Configs, get_configs
 from xrag.services.storage import StorageService
@@ -12,8 +13,8 @@ from xrag.services.qna.llms import ChatService, OpenAIChatService
 
 from .services import (
     get_storage_service, get_embed_service, get_vecdb_service,
-    get_retrieval_service, get_parser_service, get_qna_service
-
+    get_retrieval_service, get_parser_service, get_qna_service,
+    get_chat_service, get_temporal_client
 )
 
 ConfigsDep = Annotated[
@@ -56,7 +57,7 @@ VecDBDep = Annotated[
 def chat_dep(
     configs: ConfigsDep
 ) -> ChatService:
-    return OpenAIChatService(configs)
+    return get_chat_service(configs)
 
 
 ChatDep = Annotated[
@@ -82,7 +83,7 @@ RetrievalDep = Annotated[
 def qna_dep(
     chat_service: ChatDep
 ) -> QnAService:
-    return QnAService(chat_service=chat_service)
+    return get_qna_service(chat_service)
 
 
 QnADep = Annotated[
@@ -98,4 +99,14 @@ def praser_dep(
 ParserDep = Annotated[
     ParserService,
     Depends(praser_dep),
+]
+
+async def temporal_client_dep(
+    configs: ConfigsDep
+) -> Client:
+    return await get_temporal_client(configs)
+
+TemporalClientDep = Annotated[
+    Client,
+    Depends(temporal_client_dep),
 ]

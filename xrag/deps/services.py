@@ -1,10 +1,13 @@
+from temporalio.contrib.pydantic import pydantic_data_converter
+from temporalio.client import Client
+
 from xrag.configs import Configs
 from xrag.services.storage import StorageService, S3StorageService
 from xrag.services.embed import EmbeddingService, OpenAIEmbeddingService
 from xrag.services.vecdb import VecDBService, QdrantVecDBService
 from xrag.services.ingest.parse import ParserService, LiteParserService
 from xrag.services.retrieve import RetrievalService
-from xrag.services.qna.llms import ChatService
+from xrag.services.qna.llms import ChatService, OpenAIChatService
 from xrag.services.qna import QnAService
 
 
@@ -49,7 +52,21 @@ def get_retrieval_service(
         vecdb_service=vecdb_service,
     )
 
+def get_chat_service(
+    configs: Configs
+) -> ChatService:
+    return OpenAIChatService(configs)
+
 def get_qna_service(
     chat_service: ChatService
 ) -> QnAService:
     return QnAService(chat_service=chat_service)
+
+async def get_temporal_client(
+    configs: Configs
+) -> Client:
+    return await Client.connect(
+        configs.TEMPORAL_HOST,
+        namespace=configs.TEMPORAL_NAMESPACE,
+        data_converter=pydantic_data_converter,
+    )
