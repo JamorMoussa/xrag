@@ -6,6 +6,7 @@ from xrag.services.storage import StorageService, S3StorageService
 from xrag.services.embed import EmbeddingService, OpenAIEmbeddingService
 from xrag.services.vecdb import VecDBService, QdrantVecDBService
 from xrag.services.ingest.parse import ParserService, LiteParserService
+from xrag.services.ingest.chunk import ChunkingStrategy, MarkdownBasedChunking
 from xrag.services.retrieve import RetrievalService, ReRankerService
 from xrag.services.qna.llms import ChatService, OpenAIChatService
 from xrag.services.qna import QnAService
@@ -78,3 +79,8 @@ async def get_temporal_client(
         namespace=configs.TEMPORAL_NAMESPACE,
         data_converter=pydantic_data_converter,
     )
+
+def get_chunking_strategy(
+    configs: Configs
+) -> ChunkingStrategy:
+    return MarkdownBasedChunking(configs=configs)

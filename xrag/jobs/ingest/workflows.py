@@ -2,9 +2,9 @@ from temporalio import workflow
 from datetime import timedelta
 
 with workflow.unsafe.imports_passed_through():
-    from .activities import (
-        ParsingActivity, ChunkingActivity, EmbeddingActivity
-    )
+    from xrag.jobs.ingest.activities.parse import ParsingActivity
+    from xrag.jobs.ingest.activities.chunk import ChunkingActivity
+    from xrag.jobs.ingest.activities.embed import EmbeddingActivity
     from .schemas import IngestArgs
 
 @workflow.defn

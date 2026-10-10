@@ -3,9 +3,9 @@ from temporalio.worker import Worker
 import asyncio
 
 from xrag.jobs.ingest.workflows import IngestionWorkflow
-from xrag.jobs.ingest.activities import (
-    ParsingActivity, ChunkingActivity, EmbeddingActivity
-)
+from xrag.jobs.ingest.activities.parse import ParsingActivity
+from xrag.jobs.ingest.activities.chunk import ChunkingActivity
+from xrag.jobs.ingest.activities.embed import EmbeddingActivity
 from xrag.configs import configs
 
 from xrag.deps.services import (
@@ -13,6 +13,7 @@ from xrag.deps.services import (
     get_embed_service,
     get_vecdb_service,
     get_parser_service,
+    get_chunking_strategy
 )
 
 async def main():
@@ -21,7 +22,6 @@ async def main():
         configs.TEMPORAL_HOST,
         namespace=configs.TEMPORAL_NAMESPACE,
     )
-
 
     storage_service = get_storage_service(
         configs=configs,
@@ -39,6 +39,10 @@ async def main():
         configs=configs,
     )
 
+    chunking_strategy = get_chunking_strategy(
+        configs=configs
+    )
+
     parse_activity = (
         ParsingActivity(
             storage_service=storage_service, parser_service=parser_service
@@ -47,7 +51,7 @@ async def main():
 
     chunk_activity = (
         ChunkingActivity(
-            configs=configs, storage_service=storage_service
+            configs=configs, storage_service=storage_service, chunking_strategy=chunking_strategy
         ).chunk
     )
 
