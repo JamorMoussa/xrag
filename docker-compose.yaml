@@ -79,75 +79,6 @@ services:
       temporal:
         condition: service_healthy
 
-
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-
-    environment:
-      OLLAMA_HOST: 0.0.0.0:11434
-
-    volumes:
-      - ollama_data:/root/.ollama
-
-    ports:
-      - "11434:11434"
-
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "ollama",
-          "list"
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
-
-    # Uncomment if using NVIDIA GPU
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities:
-                - gpu
-
-
-  ollama-init:
-    image: ollama/ollama:latest
-    restart: "no"
-
-    depends_on:
-      ollama:
-        condition: service_healthy
-
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:?Set EMBEDDING_MODEL in .env}
-      CHAT_MODEL_NAME: ${CHAT_MODEL_NAME:?Set CHAT_MODEL_NAME in .env}
-
-    entrypoint:
-      - /bin/sh
-      - -c
-
-    command:
-      - |
-        set -eu
-        echo "Checking Ollama..."
-        ollama list
-
-        echo "Pulling embedding model: $${EMBEDDING_MODEL}"
-        ollama pull "$${EMBEDDING_MODEL}"
-
-        echo "Pulling chat model: $${CHAT_MODEL_NAME}"
-        ollama pull "$${CHAT_MODEL_NAME}"
-
-        echo "Embedding and chat models ready."
-
-
   qdrant:
     image: qdrant/qdrant:latest
     restart: unless-stopped
@@ -157,6 +88,68 @@ services:
 
     volumes:
       - qdrant_data:/qdrant/storage
+
+
+  llamacpp:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - ./models:/models
+      - ./docker/llamacpp/models.ini:/config/models.ini:ro
+
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --models-preset
+      - /config/models.ini
+      - --models-max
+      - "3"
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities:
+                - gpu
+
+  llamacpp-init:
+    image: curlimages/curl:latest
+    restart: "no"
+
+    depends_on:
+      llamacpp:
+        condition: service_started
+
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        echo "Waiting for llama.cpp router..."
+        curl --fail --silent --show-error --output /dev/null \
+          --retry 60 --retry-delay 2 --retry-all-errors --retry-max-time 120 \
+          --connect-timeout 5 --max-time 10 \
+          http://llamacpp:8080/health
+
+        # Native autoload waits for readiness and reuses models already loaded.
+        for model in embedding chat reranker; do
+          echo "Loading $${model}..."
+          if ! curl --fail-with-body --silent --show-error \
+            --output /tmp/llamacpp-init-response.json \
+            --connect-timeout 5 --max-time 600 \
+            "http://llamacpp:8080/props?model=$${model}&autoload=true"; then
+            cat /tmp/llamacpp-init-response.json
+            exit 1
+          fi
+        done
+
+        echo "Embedding, chat, and reranker models ready."
 
 
 volumes:

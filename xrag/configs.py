@@ -26,17 +26,22 @@ class Configs(BaseSettings):
     TEMPORAL_NAMESPACE: str
     TEMPORAL_TASK_QUEUE: str
 
+    # ---- LLama.cpp
+    LLAMA_CPP_BASE_URL: str
+
     # ----- Ollama
     EMBEDDING_PROVIDER: str
     EMBEDDING_MODEL: str
     EMBEDDING_BASE_URL: str
-
 
     # ---- ChatModel:
     CHAT_MODEL_PROVIDER: str
     CHAT_MODEL_NAME: str
     CHAT_MODEL_BASE_URL: str
     CHAT_MODEL_API_KEY: str
+
+    # ---- ReRank Model
+    RERANK_MODEL_NAME: str
 
     # ----- VecDB
     VECDB_PROVIDER: str

@@ -22,7 +22,7 @@ class OpenAIEmbeddingService(EmbeddingService):
             texts = [texts]
 
         response = await self.client.post(
-            "/api/embed",
+            "/embeddings",
             json={
                 "model": self.configs.EMBEDDING_MODEL,
                 "input": texts,
@@ -31,6 +31,12 @@ class OpenAIEmbeddingService(EmbeddingService):
 
         response.raise_for_status()
 
-        data = response.json()
+        data = response.json()["data"]
 
-        return data["embeddings"]
+        return [
+            item["embedding"]
+            for item in sorted(
+                data,
+                key=lambda item: item["index"],
+            )
+        ]

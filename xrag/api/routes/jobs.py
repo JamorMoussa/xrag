@@ -1,13 +1,10 @@
-from temporalio.contrib.pydantic import pydantic_data_converter
-from temporalio.client import Client
-
 from fastapi import APIRouter, status
 from pathlib import Path
 from uuid import uuid4
 
 from xrag.services.storage import PathObject
 from xrag.exceptions import DocumentNotFoundError
-from xrag.deps import StorageDep
+from xrag.deps import StorageDep, TemporalClientDep
 from xrag.configs import configs
 
 
@@ -21,6 +18,7 @@ jobs_router = APIRouter(
 @jobs_router.post("/ingest", status_code=status.HTTP_202_ACCEPTED)
 async def ingest(
     path: PathObject,
+    client: TemporalClientDep,
     storage_service: StorageDep,
 ) -> dict:
 
@@ -28,12 +26,6 @@ async def ingest(
         raise DocumentNotFoundError(
             key=path.key
         )
-
-    client = await Client.connect(
-        configs.TEMPORAL_HOST,
-        namespace=configs.TEMPORAL_NAMESPACE,
-        data_converter=pydantic_data_converter,
-    )
 
     handle = await client.start_workflow(
         "IngestionWorkflow",
