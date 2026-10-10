@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from pathlib import Path
 from pydantic import BaseModel
+from typing import Literal
 
 from xrag.configs import configs
 from xrag.models import AugmentedQuery
@@ -16,6 +17,7 @@ class Query(BaseModel):
     query: str
     top_k: int = 5
     do_rerank: bool = True
+    retrieve_mode: Literal["dense", "sparse", "hybrid"] = "hybrid"
 
 @qna_router.post("/ask")
 async def ask(
@@ -27,7 +29,10 @@ async def ask(
     # TODO: impl the re-ranking method for best retrieving resutls.
     snippets = (
         await retrieve_service.search(
-            query=query.query, top_k=query.top_k, do_rerank=query.do_rerank
+            query=query.query,
+            top_k=query.top_k,
+            do_rerank=query.do_rerank,
+            retrieve_mode=query.retrieve_mode
         )
     )      
 

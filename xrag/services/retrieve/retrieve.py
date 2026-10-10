@@ -1,3 +1,5 @@
+from typing import Literal
+
 from xrag.services.embed import EmbeddingService
 from xrag.services.vecdb import VecDBService
 from .rerank import ReRankerService
@@ -20,7 +22,8 @@ class RetrievalService:
         self, 
         query: str,
         top_k: int = 5,
-        do_rerank: bool = True
+        do_rerank: bool = True,
+        retrieve_mode: Literal["dense", "sparse", "hybrid"] = "hybrid"
     ) -> list[RetrievedSnippet]:
         
         embeddings = (
@@ -30,8 +33,10 @@ class RetrievalService:
         )
 
         results = await self.vecdb_service.search(
+            query=query,
             query_embedding=embeddings[0],
             top_k= (top_k * 3) if do_rerank else top_k,
+            mode=retrieve_mode
         )
 
         if do_rerank:

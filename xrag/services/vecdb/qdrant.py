@@ -1,5 +1,5 @@
-from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import PointStruct, Distance, VectorParams
+from qdrant_client import AsyncQdrantClient, models
+from typing import Literal
 
 from .base import VecDBService
 from xrag.models import Chunk, RetrievedSnippet
@@ -31,10 +31,17 @@ class QdrantVecDBService(VecDBService):
         if not exists:
             await self.client.create_collection(
                 collection_name=self.configs.VECDB_COLLECTION,
-                vectors_config=VectorParams(
-                    size=vector_size,
-                    distance=Distance.COSINE,
-                ),
+                vectors_config={
+                    "dense": models.VectorParams(
+                        size=vector_size,
+                        distance=models.Distance.COSINE,
+                    )
+                },
+                sparse_vectors_config={
+                    "bm25": models.SparseVectorParams(
+                        modifier=models.Modifier.IDF
+                    )
+                }
             )
 
     async def upsert(
@@ -48,9 +55,15 @@ class QdrantVecDBService(VecDBService):
         )
 
         points = [
-            PointStruct(
+            models.PointStruct(
                 id=chunk.id_,
-                vector=embedding,
+                vector={
+                    "dense": embedding,
+                    "bm25": models.Document(
+                        text=chunk.text,
+                        model="Qdrant/bm25"
+                    )
+                },
                 payload={
                     **chunk.metadata.asdict(),
                     "text": chunk.text,
@@ -64,22 +77,67 @@ class QdrantVecDBService(VecDBService):
 
         await self.client.upsert(
             collection_name=self.configs.VECDB_COLLECTION,
-            points=points,
+            points=points, wait=True
         )
 
 
     async def search(
         self,
+        query: str,
         query_embedding: list[float],
-        top_k: int = 5
+        top_k: int = 5,
+        mode: Literal["dense", "sparse", "hybrid"] = "hybrid"
     ) -> list[RetrievedSnippet]:
+
+        search_args: dict = None 
+        
+        if mode == "dense":
+            search_args = {
+                "query": query_embedding,
+                "using": "dense",
+            }
+
+        elif mode == "sparse":
+            search_args = {
+                "query": models.Document(
+                    text=query,
+                    model="Qdrant/bm25",
+                ),
+                "using": "bm25",
+            }
+
+        elif mode == "hybrid":
+
+            prefetch_limit = max(top_k, 30)
+
+            search_args = {
+                "prefetch": [
+                    models.Prefetch(
+                        query=query_embedding,
+                        using="dense",
+                        limit=prefetch_limit,
+                    ),
+                    models.Prefetch(
+                        query=models.Document(
+                            text=query,
+                            model="Qdrant/bm25",
+                        ),
+                        using="bm25",
+                        limit=prefetch_limit,
+                    ),
+                ],
+                "query": models.FusionQuery(
+                    fusion=models.Fusion.RRF
+                ),
+            }
         
         result = await self.client.query_points(
             collection_name=self.configs.VECDB_COLLECTION,
-            query=query_embedding,
+            **search_args,
+            # TODO: add filter over workspaceid if necessary
+            # query_filter=...
             limit=top_k,
-            with_payload=True,
-            with_vectors=False,
+            with_payload=True
         )
 
         result = result.points
